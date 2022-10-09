@@ -9,8 +9,10 @@ Please run the notebook index.ipynb to use this homemade module.
 
 """
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.figure_factory as ff
 from ipywidgets import widgets
 from ipywidgets import interact
 
@@ -33,10 +35,6 @@ class dataset:
         the target variable.
         
             OUTPUT: The new class, fully defined.
-            
-            RULE OF THUMB: If the number of unique values is less than the size
-        of the dataframe divided by 200, hence it is deemed as a categorical
-        variable. /!\ This OF COURSE works on large datasets only.
         """
         
         # Checking errors
@@ -54,23 +52,32 @@ class dataset:
                 
     
             
-    def showScatters(self):
+    def showScatters(self,y=None):
         """
             This function generates all scatter plots with respect to the 
-        target variable.
+        target variable or another variable denoted by y.
         
             INPUT: One should only call this method in Python after running
-        __init__.
+        __init__. If necessary, please specify y the variable of interest.
         
             OUTPUT: All scatter plots wrapped in a widget.
         """
+        if y==None: # Hence, the y axis denotes the target
+            cols = self.predictors
+            y = self.target
+        else:
+            cols = self.df.columns.tolist()
+            cols.remove(y)
+
         @interact
         def read_values(
         predictor=widgets.Dropdown(
-            description="Select :", value=self.predictors[0], options=self.predictors
+            description="Select :", value=cols[0], options=cols
         )):
-            fig = px.scatter(self.df, x = predictor, y = self.target)
+            fig = px.scatter(self.df, x = predictor, y = y)
             go.FigureWidget(fig.to_dict()).show()
+            
+        
             
     def showBoxplots(self,listCategorical):
         """
@@ -88,6 +95,42 @@ class dataset:
         )):
             fig = px.box(self.df, x = predictor, y = self.target)
             go.FigureWidget(fig.to_dict()).show()
+            
+    def showDensities(self,by=None,disp_hist=False):
+        """
+            This function shows all density plots, with a potential division
+        by a given categorical variable.
+        
+            INPUT: the categorical to be used for the division, and the option
+        to display the histogram or not.
+        
+            OUTPUT: All density plots wrapped in a widget.
+        """
+        cols = self.df.select_dtypes(np.number).columns.tolist() # We should only take quantitative ones.
+        if by == None:
+            @interact
+            def read_values(
+            variable=widgets.Dropdown(
+                description="Select :", value=cols[0], options=cols
+            )):
+                fig = ff.create_distplot([self.df[variable]],group_labels=[variable],show_hist=disp_hist)
+                go.FigureWidget(fig.to_dict()).show()
+        elif by.lower() not in [x.lower() for x in self.df.columns.tolist()]:
+            raise KeyError("The variable by is not in the dataframe")
+        else:
+            groups = self.df[by].unique().tolist()
+            @interact
+            def read_values(
+            variable=widgets.Dropdown(
+                description="Select :", value=cols[0], options=cols
+            )):
+                data=[]
+                for modality in groups:
+                    data.append(self.df[variable].loc[self.df[by] == modality].tolist())
+                fig = ff.create_distplot(data,group_labels=groups,show_hist=disp_hist)
+                go.FigureWidget(fig.to_dict()).show()
+                
+        
 
         
                 
