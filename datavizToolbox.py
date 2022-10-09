@@ -3,7 +3,7 @@
 """
 Created on Fri Sep 23 13:24:10 2022
 
-@author: 
+@author: SCHMIDT, Julia & LE FLOCH, Gaëtan
     
 Please run the notebook index.ipynb to use this homemade module.    
 
