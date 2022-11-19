@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
-Created on Sat Nov  5 14:20:11 2022
+Created on Saturday, November  5
+Last updated on Saturday, November 19
 
-@author: Gaëtan LE FLOCH
+@authors: Julia SCHMIDT & Gaëtan LE FLOCH
 '''
 #%% Import all packages
 import pandas as pd
