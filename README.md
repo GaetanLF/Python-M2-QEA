@@ -4,4 +4,4 @@ Metabolic syndrome (METSyn) is a combination of conditions that significantly ra
 the risk of a multitude of diseases, such as coronary heart diseases, diabetes or other
 illnesses that affect blood vessels (NHS 2022).
 
-For further inquiry, please contact either Julia schmidt or Gaëtan LE FLOCH.
+For further inquiry, please contact either Julia SCHMIDT or Gaëtan LE FLOCH.
