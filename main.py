@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
-Created on Saturday, November  5
-Last updated on Saturday, November 19
+Created on Sat Nov  5 14:20:11 2022
 
-@authors: Julia SCHMIDT & Gaëtan LE FLOCH
+@author: Julia SCHMIDT, Gaëtan LE FLOCH
 '''
 #%% Import all packages
 import pandas as pd
@@ -18,7 +17,9 @@ from sklearn import model_selection,tree
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import GridSearchCV,StratifiedKFold
 from sklearn.tree import DecisionTreeClassifier
-import dtreeviz.trees
+from dtreeviz.trees import dtreeviz
+import pickle
+
 
 #%%
 
@@ -32,11 +33,38 @@ df['MetabolicSyndrome'].value_counts(normalize=True) # 712 have metabolic syndro
  BMIBucket,UABucket,URALBCRBucket,BGBucket,TBucket,
  HDLBucket) = ([],[],[],[],[],[],[],[],[])
 
+def buildBucket(df,var,bins):
+    '''
+    This function build buckets in order to draw descriptive statistics.
+    '''
+    buckets = []
+    if len(bins) == 1:
+        for obs in df[var]:
+            if obs < bins[0]:
+                buckets.append(f'< {bins[0]}')
+            else:
+                buckets.append(f'> {bins[0]}')
+    else:
+        for obs in df[var]:
+            i = len(bins)
+            while i != 0:
+                if obs < bins[i-1]:
+                    i -= 1
+                else:
+                    break
+            if i == len(bins):
+                buckets.append(f'>= {bins[i-1]}')
+            elif i==0:
+                buckets.append(f'< {bins[i]}')
+            else:
+                buckets.append(f'>= {bins[i-1]} and < {bins[i]}')
+    return buckets
+
 for obs in df['Income']:
     if obs < 2000:
         incomeBucket.append('< 2000')
     elif obs >= 2000 and obs < 5000:
-        incomeBucket.append('>= 2000 & < 5000')
+        incomeBucket.append('>= 2000 and < 5000')
     elif obs >= 5000 and obs < 7000:
         incomeBucket.append('>= 5000 and < 7000')
     else:
@@ -146,29 +174,26 @@ for var in df.columns:
 fig.show()
 fig.savefig('firstDistribution.png', dpi=100)
 
-fig, axs = plt.subplots(3,3)
+fig, axs = plt.subplots(4,2)
 i = 0
-fig.suptitle('Distribution of biological variables')
 fig.set_size_inches(18.5, 15.5)
 plt.subplots_adjust(wspace=0.5,hspace=1)
-for var in ['Age','WaistCirc','BMI','Albuminuria','UrAlbCr',
+for var in ['WaistCirc','BMI','Albuminuria','UrAlbCr',
             'UricAcid','BloodGlucose','HDL','Triglycerides']:
-    row = i%3
-    if i < 3:
+    row = i%4
+    if i < 4:
         column = 0
-    elif i in [3,4,5]:
-        column = 1
     else:
-        column = 2
-    sns.kdeplot(df[var],hue=df['Sex'],ax=axs[row,column])
+        column = 1
+    sns.kdeplot(data=df,x=var,hue='Sex',ax=axs[row,column])
     i+= 1
 fig.show()
 fig.savefig('secondDistribution.png', dpi=100)
 
-sns.heatmap(df[['Sex','Age','WaistCirc','BMI','Albuminuria','UrAlbCr',
+heatmap = sns.heatmap(df[['Sex','Age','WaistCirc','BMI','Albuminuria','UrAlbCr',
             'UricAcid','BloodGlucose','HDL','Triglycerides','Sex','MetabolicSyndrome']].corr())
-plt.title('Correlations heatmap')
 plt.show()
+heatmap.figure.savefig("Heatmap.png",bbox_inches='tight')
 # -------------------------------------------------------------------
 #%%
 # One hot encode all categorical variables
@@ -178,7 +203,7 @@ df['Sex'] = df['Sex'].map({'Male':1,'Female':0})
 df = pd.concat([df,pd.get_dummies(df['Marital'],prefix='Marital_')],axis=1)
 df = pd.concat([df,pd.get_dummies(df['Race'],prefix='Race_')],axis=1,)
 df = df.drop(['Marital','Race'],axis=1)
-# PCA
+#%% PCA analysis
 
 X = StandardScaler().fit_transform(df)
 
@@ -387,3 +412,5 @@ viz = dtreeviz(dtc,
                scale=1.3, 
                X = datapoint)
 viz
+
+pickle.dump(dtc, open('dtc.sav', 'wb'))
