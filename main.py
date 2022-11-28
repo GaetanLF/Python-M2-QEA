@@ -1,34 +1,67 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
-Created on Sat Nov  5 14:20:11 2022
-
-@author: Julia SCHMIDT, Gaëtan LE FLOCH
+project_ds_metabolic.py: This file analyses historical data on patients with metabolic syndrome. The input dataset contains 2009 observations with 14 features. We output the following items: a) descriptive statistics, b) distribution tables, c)correlation matrix, d) logit regression, e) a decision tree classification algorithm.
 '''
+__author__      = 'Julia Schmidt, Gaetan Le Floch'
+__copyright__   = 'Copyright 2022, Paris'
+__status___     = 'Production'
+__date__        = '15-12-2022'
+
 #%% Import all packages
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
+
 from sklearn.decomposition import PCA
 from statsmodels.discrete.discrete_model import Logit
+
 from sklearn.preprocessing import StandardScaler
 from sklearn import model_selection,tree
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import GridSearchCV,StratifiedKFold
 from sklearn.tree import DecisionTreeClassifier
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 from dtreeviz.trees import dtreeviz
+
 import pickle
 
+#%%Define random_state constant for reproducability
+rs = 42
 
-#%%
+#%%Define key functions
 
-df = pd.read_csv('data/metabolic_syndrome.csv')
+def encoding(df, col_name):
+    '''Function takes the dataframe, the column name that is encoded and outputs the dataframe with the encoded catgecorical variables'''
+    class_name = df[col_name].unique()
+    df[col_name] = pd.Categorical(df[col_name], categories = class_name).codes
+    return df
 
-df['MetabolicSyndrome'].value_counts(normalize=True) # 712 have metabolic syndrome
-#%%
-# ----------- Code to replicate the descriptive statistics --------------
+#%%Load and inspect the data
+metabolic = pd.read_csv('data/metabolic_syndrome.csv')
+print(metabolic.head(), '\n\n')
 
+#%% Pre-processing of the data 
+
+metabolic['MetabolicSyndrome'].value_counts(normalize=True)
+
+#Check for missing variables
+check_na = metabolic.isnull()
+check_na.isin([False]).any()
+print('There are no missing values in the dataset')
+
+#Encoding of categorical variables
+encoding(metabolic, 'Sex')
+encoding(metabolic, 'Marital')
+encoding(metabolic, 'Race')
+encoding(metabolic, 'MetabolicSyndrome')
+
+#Retrieve descriptive statistics
+metabolic.describe().T
+
+#%% Generate count and share table of the report 
+#I DO NOT UNDERSTAND THAT CODE FULLY LETS DISCUSS
 (incomeBucket,ageBucket,WCBucket,
  BMIBucket,UABucket,URALBCRBucket,BGBucket,TBucket,
  HDLBucket) = ([],[],[],[],[],[],[],[],[])
@@ -60,7 +93,7 @@ def buildBucket(df,var,bins):
                 buckets.append(f'>= {bins[i-1]} and < {bins[i]}')
     return buckets
 
-for obs in df['Income']:
+for obs in metabolic['Income']:
     if obs < 2000:
         incomeBucket.append('< 2000')
     elif obs >= 2000 and obs < 5000:
@@ -70,7 +103,7 @@ for obs in df['Income']:
     else:
         incomeBucket.append('>= 7000')
 
-for obs in df['Age']:
+for obs in metabolic['Age']:
     if obs > 20 and obs <=35:
         ageBucket.append('20-35')
     elif obs > 35 and obs <= 60:
@@ -78,13 +111,13 @@ for obs in df['Age']:
     else:
         ageBucket.append('61-80')
         
-for obs in df['WaistCirc']:
+for obs in metabolic['WaistCirc']:
     if obs > 63 and obs <= 100:
         WCBucket.append('63-100')
     else:
         WCBucket.append('> 100')
         
-for obs in df['BMI']:
+for obs in metabolic['BMI']:
     if obs <= 18.5:
         BMIBucket.append('Underweight')
     elif obs > 18.5 and obs < 25:
@@ -94,38 +127,38 @@ for obs in df['BMI']:
     else:
         BMIBucket.append('Obese')
         
-for obs in df['UricAcid']:
+for obs in metabolic['UricAcid']:
     if obs < 7:
         UABucket.append('< 7')
     else:
         UABucket.append('> 7')
         
-for obs in df['UrAlbCr']:
+for obs in metabolic['UrAlbCr']:
     if obs < 300:
         URALBCRBucket.append('< 300')
     else:
         URALBCRBucket.append('> 300')
         
-for obs in df['BloodGlucose']:
+for obs in metabolic['BloodGlucose']:
     if obs < 54:
         BGBucket.append('< 54')
     else:
         BGBucket.append('> 54')
     
-for obs in df['Triglycerides']:
+for obs in metabolic['Triglycerides']:
     if obs < 200:
         TBucket.append('< 200')
     else:
         TBucket.append('> 200')
         
-for obs in df['HDL']:
+for obs in metabolic['HDL']:
     if obs < 40:
         HDLBucket.append('< 40')
     else:
         HDLBucket.append('> 40')
         
         
-dfDataViz = df.copy()
+dfDataViz = metabolic.copy()
 (dfDataViz['incomeBucket'],dfDataViz['AgeBucket'],
  dfDataViz['WCBucket'],dfDataViz['BMIBucket'],
  dfDataViz['UABucket'],dfDataViz['URALBCRBucket'],
@@ -141,7 +174,7 @@ for var in ['Sex','incomeBucket','AgeBucket','Race','Marital',
     print(dfDataViz[var].value_counts())
     print(dfDataViz[var].value_counts(normalize=True))
     
-dfDataViz = dfDataViz.loc[df['MetabolicSyndrome'] == 'MetSyn']
+dfDataViz = dfDataViz.loc[metabolic['MetabolicSyndrome'] == 'MetSyn']
 
 for var in ['Sex','incomeBucket','AgeBucket','Race','Marital',
             'MetabolicSyndrome','WCBucket','Albuminuria','BMIBucket',
@@ -149,15 +182,14 @@ for var in ['Sex','incomeBucket','AgeBucket','Race','Marital',
             'HDLBucket']: # Data for Table 1
     print(dfDataViz[var].value_counts())
     print(dfDataViz[var].value_counts(normalize=True))
-#%%
-# ------------ Chart of distributions among variables ------------------
+#%% Analysis of the distributions among variables (Figure 1)
 
 fig, axs = plt.subplots(7,2)
 i = 0
 fig.suptitle('Distribution of biological variables')
 fig.set_size_inches(18.5, 15.5)
 plt.subplots_adjust(wspace=0.5,hspace=1)
-for var in df.columns:
+for var in metabolic.columns:
     row = i%7
     if i >= 7:
         column = 1
@@ -166,9 +198,9 @@ for var in df.columns:
         
     if var in ['Age','WaistCirc','BMI','Albuminuria','UrAlbCr',
                 'UricAcid','BloodGlucose','HDL','Triglycerides']:
-        sns.kdeplot(df[var],ax=axs[row,column])
+        sns.kdeplot(metabolic[var],ax=axs[row,column])
     else:
-        sns.histplot(df,x=var,stat='density',ax=axs[row,column])
+        sns.histplot(metabolic,x=var,stat='density',ax=axs[row,column])
     axs[row,column].set_title(f'{var}')
     i+= 1
 fig.show()
@@ -185,26 +217,27 @@ for var in ['WaistCirc','BMI','Albuminuria','UrAlbCr',
         column = 0
     else:
         column = 1
-    sns.kdeplot(data=df,x=var,hue='Sex',ax=axs[row,column])
+    sns.kdeplot(data=metabolic,x=var,hue='Sex',ax=axs[row,column])
     i+= 1
 fig.show()
 fig.savefig('secondDistribution.png', dpi=100)
 
-heatmap = sns.heatmap(df[['Sex','Age','WaistCirc','BMI','Albuminuria','UrAlbCr',
-            'UricAcid','BloodGlucose','HDL','Triglycerides','Sex','MetabolicSyndrome']].corr())
+#%% Correlation matrix (heatmap)
+
+heatmap = sns.heatmap(metabolic[['Sex','Age','WaistCirc','BMI','Albuminuria','UrAlbCr','UricAcid','BloodGlucose','HDL','Triglycerides','Sex','MetabolicSyndrome']].corr())
 plt.show()
 heatmap.figure.savefig("Heatmap.png",bbox_inches='tight')
 # -------------------------------------------------------------------
-#%%
+#%% NOT NEEDED SINCE ENCODED ALREADY ABOVE
 # One hot encode all categorical variables
 
-df['MetabolicSyndrome'] = df['MetabolicSyndrome'].map({'MetSyn':1,'No MetSyn':0})
-df['Sex'] = df['Sex'].map({'Male':1,'Female':0})
-df = pd.concat([df,pd.get_dummies(df['Marital'],prefix='Marital_')],axis=1)
+metabolic['MetabolicSyndrome'] = metabolic['MetabolicSyndrome'].map({'MetSyn':1,'No MetSyn':0})
+metabolic['Sex'] = metabolic['Sex'].map({'Male':1,'Female':0})
+df = pd.concat([metabolic,pd.get_dummies(metabolic['Marital'],prefix='Marital_')],axis=1)
 df = pd.concat([df,pd.get_dummies(df['Race'],prefix='Race_')],axis=1,)
 df = df.drop(['Marital','Race'],axis=1)
-#%% PCA analysis
 
+#%% Principal component analysis
 X = StandardScaler().fit_transform(df)
 
 myPCA = PCA(n_components=2)
@@ -219,13 +252,10 @@ fig = plt.gcf()
 fig.set_size_inches(18.5, 10.5)
 fig.savefig('PCAResults.png', dpi=100)
     
-# Not very informative
-# Yet the waist circle and BMI (highly correlated between them) seem to be big determinants
-#%%
-# Logit regression
+#%% Logit regression 
 def doRegression(predictors):
     '''
-    This function does the logit regression and outputs the summary.
+    This function takes as input the predictors of a logit regression and outputs a results summary.
     '''
     y = df['MetabolicSyndrome']
     X = df[predictors]
@@ -256,35 +286,7 @@ for i in ['Race__Asian','Race__Black','Race__Hispanic','Race__MexAmerican',
     predictors.remove(i)
 doRegression(predictors) # Regression no. 4
 
-#%%
-# Decision tree
-
-#Define random_state constant for reproducability
-rs = 42
-
-#%%Load dataset and pre-process the data
-metabolic = pd.read_csv('data/metabolic_syndrome.csv')
-
-#Check for missing variables
-check_na = metabolic.isnull()
-check_na.isin([False]).any()
-
-#Encoding of categorical variables
-def encoding(df, col_name):
-    '''Function takes the dataframe, the column name that is encoded and outputs the dataframe with the encoded catgecorical variables'''
-    class_name = df[col_name].unique()
-    df[col_name] = pd.Categorical(df[col_name], categories = class_name).codes
-    return df
-
-encoding(metabolic, 'Sex')
-encoding(metabolic, 'Marital')
-encoding(metabolic, 'Race')
-encoding(metabolic, 'MetabolicSyndrome')
-
-#Retrieve descriptive statistics
-metabolic.describe().T
-
-#%%Prepare dataset for machine learning classification
+#%% Decision tree
 
 #Define features and target variable
 X = metabolic.drop('MetabolicSyndrome', axis = 1) # define the feature variables
@@ -293,7 +295,7 @@ Y = metabolic['MetabolicSyndrome']# define thtarget variable
 #Split in train and test set
 X_train, X_test, Y_train, Y_test = model_selection.train_test_split(X, Y, test_size=0.30, random_state = rs, stratify = Y)
 
-#%%Set up the classification algorithm
+#Set up the decisiontree classifier
 dtc = DecisionTreeClassifier(random_state=rs)
 
 #%%Set grid search for hyperparameter tuning
@@ -301,18 +303,16 @@ dtc = DecisionTreeClassifier(random_state=rs)
 #Identify the correct grid range for the alpha parameter
 dtc = DecisionTreeClassifier(random_state=rs).fit(X_train,Y_train)
 dtc_pruning = dtc.cost_complexity_pruning_path(X_train, Y_train)
-
 pruning_summary = pd.DataFrame(dtc_pruning)
 print(pruning_summary.head())
 
-#Visualize
+#Visualize the pruning parameters against the impurity
 plt.plot(dtc_pruning['ccp_alphas'], dtc_pruning['impurities'])
 plt.title('Alpha vs. Impurities for a decision tree classifier')
 plt.xlabel('Alphas')
 plt.ylabel('Impurities')
 plt.legend()
 plt.show()
-
 
 #Test which range of alpha parameters would be suitable for the grid search
 accuracy_train = []
@@ -331,26 +331,21 @@ plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
 
-
-#%%Set grid search for hyperparameter tuning
+#%%Define grid search for hyperparameter tuning
 dtc_para = {'min_samples_split': range(2, 200, 10),
 'min_samples_leaf': range(1,200,5),
 'max_depth': range(1, 200,5), 
 'ccp_alpha' : (0, 0.01, 0.02, 0.03, 0.04)}
 
-#Deploy cross validation and fit the tree
-cv_folds = StratifiedKFold(5, shuffle=True, random_state=rs)
+#Deploy stratified cross validation (imbalanced target) and fit the tree
+cv_folds = StratifiedKFold(5, shuffle=True, random_state=rs) 
 dtc_cv = GridSearchCV(dtc, dtc_para, cv=cv_folds, n_jobs=-1)
 dtc_cv.fit(X_train, Y_train) 
-
 
 #%%Visualize test score distributions
 results = pd.DataFrame(dtc_cv.cv_results_)
 col_names = ['split0_test_score', 'split1_test_score', 'split2_test_score',
        'split3_test_score', 'split4_test_score', 'mean_test_score']
-
-# for col in col_names:
-#    sns.kdeplot(results[col], shade=True)
 
 #Retrieve the best parameter and the accuracy
 print(' Results from Grid Search ' )
@@ -359,8 +354,7 @@ print('\n The best score across ALL searched params:\n',dtc_cv.best_score_)
 print('\n The best parameters across ALL searched params:\n',dtc_cv.best_params_)
 
 
-#%%
-#Predict the the target using the best parameters chosen by the model 
+#%%Predict the the target using the best parameters chosen by the model 
 y_pred = dtc_cv.best_estimator_.predict(X_test)
 
 #Compute classification matrix
@@ -391,10 +385,7 @@ tree.plot_tree(dtc,
 fig.savefig('decision_tree.png')
 
 
-# %%
-#Visualize the prediction path
-# pick random X observation for demo
-
+# %%Visualize the prediction path (pick random X observation for demo)
 fig = plt.figure(figsize=(25,20))
 dtc = DecisionTreeClassifier(random_state=rs, max_depth = 6, min_samples_leaf=6, min_samples_split= 22)
 dtc.fit(X_train, Y_train) 
@@ -412,5 +403,4 @@ viz = dtreeviz(dtc,
                scale=1.3, 
                X = datapoint)
 viz
-
 pickle.dump(dtc, open('dtc.sav', 'wb'))
