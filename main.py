@@ -17,7 +17,7 @@ from statsmodels.discrete.discrete_model import Logit
 
 from sklearn.preprocessing import StandardScaler
 from sklearn import model_selection,tree
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score
 from sklearn.model_selection import GridSearchCV,StratifiedKFold
 from sklearn.tree import DecisionTreeClassifier
 
@@ -31,7 +31,6 @@ import pickle
 rs = 42
 
 #%%Define key functions
-
 def encoding(df, col_name):
     '''Function takes the dataframe, the column name that is encoded and outputs the dataframe with the encoded catgecorical variables'''
     class_name = df[col_name].unique()
@@ -183,7 +182,6 @@ for var in ['Sex','incomeBucket','AgeBucket','Race','Marital',
     print(dfDataViz[var].value_counts())
     print(dfDataViz[var].value_counts(normalize=True))
 #%% Analysis of the distributions among variables (Figure 1)
-
 fig, axs = plt.subplots(7,2)
 i = 0
 fig.suptitle('Distribution of biological variables')
@@ -223,35 +221,36 @@ fig.show()
 fig.savefig('secondDistribution.png', dpi=100)
 
 #%% Correlation matrix (heatmap)
-
 heatmap = sns.heatmap(metabolic[['Sex','Age','WaistCirc','BMI','Albuminuria','UrAlbCr','UricAcid','BloodGlucose','HDL','Triglycerides','Sex','MetabolicSyndrome']].corr())
 plt.show()
 heatmap.figure.savefig("Heatmap.png",bbox_inches='tight')
-# -------------------------------------------------------------------
-#%% NOT NEEDED SINCE ENCODED ALREADY ABOVE
-# One hot encode all categorical variables
 
+#%% Principal component analysis (CREATES A BUG)
+
+#ONE HOT ENCODING NEEDS TO BE OPTIMIZED (SEE MY ENCODING UP IN THE FIRST SECTION)
 metabolic['MetabolicSyndrome'] = metabolic['MetabolicSyndrome'].map({'MetSyn':1,'No MetSyn':0})
 metabolic['Sex'] = metabolic['Sex'].map({'Male':1,'Female':0})
 df = pd.concat([metabolic,pd.get_dummies(metabolic['Marital'],prefix='Marital_')],axis=1)
 df = pd.concat([df,pd.get_dummies(df['Race'],prefix='Race_')],axis=1,)
 df = df.drop(['Marital','Race'],axis=1)
 
-#%% Principal component analysis
-X = StandardScaler().fit_transform(df)
 
-myPCA = PCA(n_components=2)
-myPCA.fit_transform(X)
+#CREATES A BUG AT THE MOMENT
+# X = StandardScaler().fit_transform(df)
 
-firstComponent,secondComponent = myPCA.components_[0],myPCA.components_[1]
+# myPCA = PCA(n_components=2)
+# myPCA.fit_transform(X)
 
-for i, varnames in enumerate(df.columns):
-    plt.scatter(firstComponent[i], secondComponent[i])
-    plt.text(firstComponent[i], secondComponent[i], varnames)
-fig = plt.gcf()
-fig.set_size_inches(18.5, 10.5)
-fig.savefig('PCAResults.png', dpi=100)
+# firstComponent,secondComponent = myPCA.components_[0],myPCA.components_[1]
+
+# for i, varnames in enumerate(df.columns):
+#     plt.scatter(firstComponent[i], secondComponent[i])
+#     plt.text(firstComponent[i], secondComponent[i], varnames)
+# fig = plt.gcf()
+# fig.set_size_inches(18.5, 10.5)
+# fig.savefig('PCAResults.png', dpi=100)
     
+#%% Logit regression (CAN BE OMPTIMIZED USING SCIKIT LEARN)
 #%% Logit regression 
 def doRegression(predictors):
     '''
@@ -286,7 +285,8 @@ for i in ['Race__Asian','Race__Black','Race__Hispanic','Race__MexAmerican',
     predictors.remove(i)
 doRegression(predictors) # Regression no. 4
 
-#%% Decision tree
+
+#%% Implementation of a decision tree
 
 #Define features and target variable
 X = metabolic.drop('MetabolicSyndrome', axis = 1) # define the feature variables
@@ -298,8 +298,7 @@ X_train, X_test, Y_train, Y_test = model_selection.train_test_split(X, Y, test_s
 #Set up the decisiontree classifier
 dtc = DecisionTreeClassifier(random_state=rs)
 
-#%%Set grid search for hyperparameter tuning
-
+#Set grid search for hyperparameter tuning
 #Identify the correct grid range for the alpha parameter
 dtc = DecisionTreeClassifier(random_state=rs).fit(X_train,Y_train)
 dtc_pruning = dtc.cost_complexity_pruning_path(X_train, Y_train)
@@ -331,7 +330,7 @@ plt.ylabel('Accuracy')
 plt.legend()
 plt.show()
 
-#%%Define grid search for hyperparameter tuning
+#Define grid search for hyperparameter tuning
 dtc_para = {'min_samples_split': range(2, 200, 10),
 'min_samples_leaf': range(1,200,5),
 'max_depth': range(1, 200,5), 
@@ -342,35 +341,46 @@ cv_folds = StratifiedKFold(5, shuffle=True, random_state=rs)
 dtc_cv = GridSearchCV(dtc, dtc_para, cv=cv_folds, n_jobs=-1)
 dtc_cv.fit(X_train, Y_train) 
 
-#%%Visualize test score distributions
+#Visualize test score distributions
 results = pd.DataFrame(dtc_cv.cv_results_)
 col_names = ['split0_test_score', 'split1_test_score', 'split2_test_score',
        'split3_test_score', 'split4_test_score', 'mean_test_score']
 
-#Retrieve the best parameter and the accuracy
+#Retrieve the best parameter and their respective accuracies
 print(' Results from Grid Search ' )
 print('\n The best estimator across ALL searched params:\n',dtc_cv.best_estimator_)
 print('\n The best score across ALL searched params:\n',dtc_cv.best_score_)
 print('\n The best parameters across ALL searched params:\n',dtc_cv.best_params_)
 
 
-#%%Predict the the target using the best parameters chosen by the model 
+#Predict the the target using the best parameters chosen by the model 
 y_pred = dtc_cv.best_estimator_.predict(X_test)
 
-#Compute classification matrix
-print(confusion_matrix(y_pred, Y_test))
+#Evaluation matrix of the prediction
 
-#Viusalize the accuracy of the decision tree against the parameters of the grid search
-sns.lineplot(data=results, x='param_min_samples_split', y='mean_test_score')
-plt.show()
+def evaluation_tree(Y_test, y_pred):
+    accuracy = accuracy_score(Y_test, y_pred)
+    recall = recall_score(Y_test, y_pred)
+    precision = precision_score(Y_test, y_pred)
+    print(confusion_matrix(Y_test, y_pred))
+    df = pd.DataFrame({'Metrics': 'best model', 'Accuracy': accuracy, 'recall': recall, 'precision': precision}, index=[0])
+    return df
 
-sns.lineplot(data=results, x='param_max_depth', y='mean_test_score')
-plt.show()
+evaluation_tree(Y_test, y_pred)
 
-sns.lineplot(data=results, x='param_min_samples_leaf', y='mean_test_score')
-plt.show()
+#Visualize the accuracy of the decision tree against the parameters of the grid search
 
-#%%Visualize best decision tree classifier
+def plot_tree_param(data, x, y):
+    '''Function takes the dataframe, and the x and y axis parameters and outputs a plot'''
+    sns.lineplot(data = data, x = x, y = y)
+    return plt.show()
+
+#Plot the different parameters 
+params = ['param_max_depth', 'param_min_samples_leaf', 'param_min_samples_split']
+for i in params: 
+    plot_tree_param(results, i, 'mean_test_score')
+
+#Visualize best decision tree classifier
 dtc = DecisionTreeClassifier(random_state=rs, max_depth = 6, min_samples_leaf=6, min_samples_split= 22)
 dtc.fit(X_train, Y_train) 
 tree.plot_tree(dtc)
@@ -384,8 +394,7 @@ tree.plot_tree(dtc,
                filled = True)
 fig.savefig('decision_tree.png')
 
-
-# %%Visualize the prediction path (pick random X observation for demo)
+#Visualize the prediction path (pick random X observation for demo)
 fig = plt.figure(figsize=(25,20))
 dtc = DecisionTreeClassifier(random_state=rs, max_depth = 6, min_samples_leaf=6, min_samples_split= 22)
 dtc.fit(X_train, Y_train) 
