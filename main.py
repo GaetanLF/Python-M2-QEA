@@ -30,12 +30,8 @@ import pickle
 #%%Define random_state constant for reproducability
 rs = 42
 
-#%%Define key functions
-def encoding(df, col_name):
-    '''Function takes the dataframe, the column name that is encoded and outputs the dataframe with the encoded catgecorical variables'''
-    class_name = df[col_name].unique()
-    df[col_name] = pd.Categorical(df[col_name], categories = class_name).codes
-    return df
+
+
 
 #%%Load and inspect the data
 metabolic = pd.read_csv('data/metabolic_syndrome.csv')
@@ -51,10 +47,14 @@ check_na.isin([False]).any()
 print('There are no missing values in the dataset')
 
 #Encoding of categorical variables
-encoding(metabolic, 'Sex')
-encoding(metabolic, 'Marital')
-encoding(metabolic, 'Race')
-encoding(metabolic, 'MetabolicSyndrome')
+def encoding(df, col_name):
+    '''Function takes the dataframe, the column name that is encoded and outputs the dataframe with the encoded catgecorical variables'''
+    class_name = df[col_name].unique()
+    df[col_name] = pd.Categorical(df[col_name], categories = class_name).codes
+    return df
+
+for i in ['Sex', 'Marital', 'Race', 'MetabolicSyndome']:
+    encoding(metabolic, i)
 
 #Retrieve descriptive statistics
 metabolic.describe().T
@@ -227,13 +227,12 @@ heatmap.figure.savefig("Heatmap.png",bbox_inches='tight')
 
 #%% Principal component analysis (CREATES A BUG)
 
-#ONE HOT ENCODING NEEDS TO BE OPTIMIZED (SEE MY ENCODING UP IN THE FIRST SECTION)
+#One hot encoding
 metabolic['MetabolicSyndrome'] = metabolic['MetabolicSyndrome'].map({'MetSyn':1,'No MetSyn':0})
 metabolic['Sex'] = metabolic['Sex'].map({'Male':1,'Female':0})
 df = pd.concat([metabolic,pd.get_dummies(metabolic['Marital'],prefix='Marital_')],axis=1)
 df = pd.concat([df,pd.get_dummies(df['Race'],prefix='Race_')],axis=1,)
 df = df.drop(['Marital','Race'],axis=1)
-
 
 #CREATES A BUG AT THE MOMENT
 # X = StandardScaler().fit_transform(df)
@@ -249,8 +248,7 @@ df = df.drop(['Marital','Race'],axis=1)
 # fig = plt.gcf()
 # fig.set_size_inches(18.5, 10.5)
 # fig.savefig('PCAResults.png', dpi=100)
-    
-#%% Logit regression (CAN BE OMPTIMIZED USING SCIKIT LEARN)
+
 #%% Logit regression 
 def doRegression(predictors):
     '''
