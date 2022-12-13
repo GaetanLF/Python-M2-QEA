@@ -31,8 +31,6 @@ import pickle
 rs = 42
 
 
-
-
 #%%Load and inspect the data
 metabolic = pd.read_csv('data/metabolic_syndrome.csv')
 print(metabolic.head(), '\n\n')
@@ -59,8 +57,7 @@ for i in ['Sex', 'Marital', 'Race', 'MetabolicSyndome']:
 #Retrieve descriptive statistics
 metabolic.describe().T
 
-#%% Generate count and share table of the report 
-#I DO NOT UNDERSTAND THAT CODE FULLY LETS DISCUSS
+#%% Generate first descriptive statistics of the report (Table 1)
 (incomeBucket,ageBucket,WCBucket,
  BMIBucket,UABucket,URALBCRBucket,BGBucket,TBucket,
  HDLBucket) = ([],[],[],[],[],[],[],[],[])
