@@ -257,7 +257,6 @@ for i in ['Marital__Divorced','Marital__Married',
     predictors.remove(i)
 doRegression(predictors) # Regression no. 4 (no marital nor race)
 
-
 #%% Implementation of a decision tree
 
 # Encoding of categorical variables
