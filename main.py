@@ -156,7 +156,7 @@ for var in ['Sex','incomeBucket','AgeBucket','Race','Marital',
             'HDLBucket']: # Data for Table 1
     print(dfDataViz[var].value_counts())
     print(dfDataViz[var].value_counts(normalize=True))
-    
+
 
 #%% Analysis of the distributions among variables (Figure 1)
 
@@ -232,23 +232,30 @@ predictors = df.columns.tolist()
 predictors.remove('MetabolicSyndrome')
 doRegression(predictors) # Regression no. 1
 
-for i in ['Income','Marital__Divorced','Marital__Married',
+predictors = df.columns.tolist()
+predictors.remove('MetabolicSyndrome')
+for i in ['Marital__Divorced','Marital__Married',
                    'Marital__Separated','Marital__Single',
                    'Marital__Widowed']:
     predictors.remove(i)
-doRegression(predictors) # Regression no. 2
-
-for i in ['Race__Asian','Race__Black','Race__Hispanic','Race__MexAmerican',
-          'Race__Other','Race__White']:
-    predictors.remove(i)
-doRegression(predictors) # Regression no. 3
+doRegression(predictors) # Regression no. 2 (no marital)
 
 predictors = df.columns.tolist()
 predictors.remove('MetabolicSyndrome')
 for i in ['Race__Asian','Race__Black','Race__Hispanic','Race__MexAmerican',
           'Race__Other','Race__White']:
     predictors.remove(i)
-doRegression(predictors) # Regression no. 4
+doRegression(predictors) # Regression no. 3 (no race)
+
+
+predictors = df.columns.tolist()
+predictors.remove('MetabolicSyndrome')
+for i in ['Marital__Divorced','Marital__Married',
+                   'Marital__Separated','Marital__Single',
+                   'Marital__Widowed', 'Race__Asian','Race__Black','Race__Hispanic','Race__MexAmerican',
+          'Race__Other','Race__White']:
+    predictors.remove(i)
+doRegression(predictors) # Regression no. 4 (no marital nor race)
 
 
 #%% Implementation of a decision tree
