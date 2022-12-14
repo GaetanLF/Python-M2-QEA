@@ -30,12 +30,9 @@ import pickle
 #%%Define random_state constant for reproducability
 rs = 42
 
-
 #%%Load and inspect the data
 metabolic = pd.read_csv('data/metabolic_syndrome.csv')
 print(metabolic.head(), '\n\n')
-
-#%% Pre-processing of the data 
 
 metabolic['MetabolicSyndrome'].value_counts(normalize=True)
 
@@ -43,16 +40,6 @@ metabolic['MetabolicSyndrome'].value_counts(normalize=True)
 check_na = metabolic.isnull()
 check_na.isin([False]).any()
 print('There are no missing values in the dataset')
-
-#Encoding of categorical variables
-def encoding(df, col_name):
-    '''Function takes the dataframe, the column name that is encoded and outputs the dataframe with the encoded catgecorical variables'''
-    class_name = df[col_name].unique()
-    df[col_name] = pd.Categorical(df[col_name], categories = class_name).codes
-    return df
-
-for i in ['Sex', 'Marital', 'Race', 'MetabolicSyndome']:
-    encoding(metabolic, i)
 
 #Retrieve descriptive statistics
 metabolic.describe().T
@@ -108,10 +95,10 @@ for obs in metabolic['Age']:
         ageBucket.append('61-80')
         
 for obs in metabolic['WaistCirc']:
-    if obs > 63 and obs <= 100:
-        WCBucket.append('63-100')
+    if obs > 63 and obs <= 94:
+        WCBucket.append('63-94')
     else:
-        WCBucket.append('> 100')
+        WCBucket.append('> 94')
         
 for obs in metabolic['BMI']:
     if obs <= 18.5:
@@ -136,22 +123,22 @@ for obs in metabolic['UrAlbCr']:
         URALBCRBucket.append('> 300')
         
 for obs in metabolic['BloodGlucose']:
-    if obs < 54:
-        BGBucket.append('< 54')
+    if obs < 200:
+        BGBucket.append('< 200')
     else:
-        BGBucket.append('> 54')
+        BGBucket.append('> 200')
     
 for obs in metabolic['Triglycerides']:
-    if obs < 200:
-        TBucket.append('< 200')
+    if obs < 150:
+        TBucket.append('< 150')
     else:
-        TBucket.append('> 200')
+        TBucket.append('> 150')
         
 for obs in metabolic['HDL']:
-    if obs < 40:
-        HDLBucket.append('< 40')
+    if obs < 60:
+        HDLBucket.append('< 60')
     else:
-        HDLBucket.append('> 40')
+        HDLBucket.append('> 60')
         
         
 dfDataViz = metabolic.copy()
@@ -170,18 +157,13 @@ for var in ['Sex','incomeBucket','AgeBucket','Race','Marital',
     print(dfDataViz[var].value_counts())
     print(dfDataViz[var].value_counts(normalize=True))
     
-dfDataViz = dfDataViz.loc[metabolic['MetabolicSyndrome'] == 'MetSyn']
 
-for var in ['Sex','incomeBucket','AgeBucket','Race','Marital',
-            'MetabolicSyndrome','WCBucket','Albuminuria','BMIBucket',
-            'UABucket','URALBCRBucket','BGBucket','TBucket',
-            'HDLBucket']: # Data for Table 1
-    print(dfDataViz[var].value_counts())
-    print(dfDataViz[var].value_counts(normalize=True))
 #%% Analysis of the distributions among variables (Figure 1)
+
+#Densities of biological variables overall
 fig, axs = plt.subplots(7,2)
 i = 0
-fig.suptitle('Distribution of biological variables')
+fig.suptitle('Density functions of biological variables')
 fig.set_size_inches(18.5, 15.5)
 plt.subplots_adjust(wspace=0.5,hspace=1)
 for var in metabolic.columns:
@@ -201,9 +183,12 @@ for var in metabolic.columns:
 fig.show()
 fig.savefig('firstDistribution.png', dpi=100)
 
+
+#Distribution of biological variables by sex
 fig, axs = plt.subplots(4,2)
 i = 0
 fig.set_size_inches(18.5, 15.5)
+fig.suptitle('Distribution of biological variables')
 plt.subplots_adjust(wspace=0.5,hspace=1)
 for var in ['WaistCirc','BMI','Albuminuria','UrAlbCr',
             'UricAcid','BloodGlucose','HDL','Triglycerides']:
@@ -217,36 +202,21 @@ for var in ['WaistCirc','BMI','Albuminuria','UrAlbCr',
 fig.show()
 fig.savefig('secondDistribution.png', dpi=100)
 
-#%% Correlation matrix (heatmap)
+#%% Correlation matrix (Figure 2)
 heatmap = sns.heatmap(metabolic[['Sex','Age','WaistCirc','BMI','Albuminuria','UrAlbCr','UricAcid','BloodGlucose','HDL','Triglycerides','Sex','MetabolicSyndrome']].corr())
 plt.show()
 heatmap.figure.savefig("Heatmap.png",bbox_inches='tight')
 
-#%% Principal component analysis (CREATES A BUG)
+#%% Logit regression 
 
-#One hot encoding
+#One hot encoding (required for logit regression)
 metabolic['MetabolicSyndrome'] = metabolic['MetabolicSyndrome'].map({'MetSyn':1,'No MetSyn':0})
 metabolic['Sex'] = metabolic['Sex'].map({'Male':1,'Female':0})
 df = pd.concat([metabolic,pd.get_dummies(metabolic['Marital'],prefix='Marital_')],axis=1)
 df = pd.concat([df,pd.get_dummies(df['Race'],prefix='Race_')],axis=1,)
 df = df.drop(['Marital','Race'],axis=1)
 
-#CREATES A BUG AT THE MOMENT
-# X = StandardScaler().fit_transform(df)
 
-# myPCA = PCA(n_components=2)
-# myPCA.fit_transform(X)
-
-# firstComponent,secondComponent = myPCA.components_[0],myPCA.components_[1]
-
-# for i, varnames in enumerate(df.columns):
-#     plt.scatter(firstComponent[i], secondComponent[i])
-#     plt.text(firstComponent[i], secondComponent[i], varnames)
-# fig = plt.gcf()
-# fig.set_size_inches(18.5, 10.5)
-# fig.savefig('PCAResults.png', dpi=100)
-
-#%% Logit regression 
 def doRegression(predictors):
     '''
     This function takes as input the predictors of a logit regression and outputs a results summary.
@@ -282,6 +252,18 @@ doRegression(predictors) # Regression no. 4
 
 
 #%% Implementation of a decision tree
+
+# Encoding of categorical variables
+def encoding(df, col_name):
+    '''Function takes the dataframe, the column name that is encoded and outputs the dataframe with the encoded catgecorical variables'''
+    class_name = df[col_name].unique()
+    df[col_name] = pd.Categorical(df[col_name], categories = class_name).codes
+    return df
+
+encoding(metabolic, 'Sex')
+encoding(metabolic, 'Marital')
+encoding(metabolic, 'Race')
+encoding(metabolic, 'MetabolicSyndrome')
 
 #Define features and target variable
 X = metabolic.drop('MetabolicSyndrome', axis = 1) # define the feature variables
@@ -319,7 +301,6 @@ for a in dtc_pruning['ccp_alphas']:
 alphas = dtc_pruning['ccp_alphas']
 plt.plot(alphas, accuracy_train, label = 'Accuracy train')
 plt.plot(alphas, accuracy_test, label = 'Accuracy test')
-plt.title('Accuracy vs alphas for pruned trees')
 plt.xlabel('ccp_alphas')
 plt.ylabel('Accuracy')
 plt.legend()
@@ -352,7 +333,6 @@ print('\n The best parameters across ALL searched params:\n',dtc_cv.best_params_
 y_pred = dtc_cv.best_estimator_.predict(X_test)
 
 #Evaluation matrix of the prediction
-
 def evaluation_tree(Y_test, y_pred):
     accuracy = accuracy_score(Y_test, y_pred)
     recall = recall_score(Y_test, y_pred)
@@ -389,7 +369,7 @@ tree.plot_tree(dtc,
                filled = True)
 fig.savefig('decision_tree.png')
 
-#Visualize the prediction path (pick random X observation for demo)
+#Visualize the prediction path (pick random X observation for demonstration)
 fig = plt.figure(figsize=(25,20))
 dtc = DecisionTreeClassifier(random_state=rs, max_depth = 6, min_samples_leaf=6, min_samples_split= 22)
 dtc.fit(X_train, Y_train) 
