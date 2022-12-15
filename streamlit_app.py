@@ -4,6 +4,8 @@
 Created on Fri Nov 11 20:21:58 2022
 
 @author: Julia SCHMIDT, Gaëtan LE FLOCH
+
+/!\ WARNING: Two absolute pathfiles need to be modified.
 """
 
 # import the streamlit library
@@ -36,13 +38,14 @@ api = tweepy.API(auth)
 #%% Import the data
 
 df = pd.read_csv('/Users/gaetanlefloch/Documents/Master2/Python/Final_Project/data/metabolic_syndrome.csv')
-
+# Absolute pathfile to be modified.
 # give a title to our app
 st.title('Welcome to this auto-test for Metabolic syndrome')
 st.text("By Julia SCHMIDT and Gaëtan LE FLOCH")
 
 st.text("This algorithm is made by the Hospital to offer a first diagnosis on your condition.")
 st.text("Please contact your M.D. if it says so.")
+st.text("You can decide to share the pre-diagnosis on Twitter to raise awareness on Metabolic Syndrome.")
  
 st.markdown("### General informations")
 
@@ -104,11 +107,13 @@ triglycerides = st.number_input('Enter your triglycerides level :')
 
 HDL = st.number_input('Enter your HDL level :')
 
-shareTwitter = st.checkbox("Do you want to publish an anonym tweet in case you have MetSyn ?")
+shareTwitter = st.checkbox("YES, share my pre-diagnosis on Twitter if I have the syndrome",
+                           value=True)
 
 if (st.button('Do I have metabolic syndrome ?')):
     
     loaded_model = pickle.load(open('/Users/gaetanlefloch/Documents/Master2/Python/Final_Project/data/dtc.sav', 'rb'))
+    # Absolute pathfile to be modified
     sex = encodingLast(df,"Sex",sex)
     Marital = encodingLast(df, 'Marital',Marital)
     Race = encodingLast(df, 'Race',Race)
