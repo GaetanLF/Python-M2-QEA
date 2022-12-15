@@ -8,6 +8,7 @@ Metabolic syndrome is a combination of conditions that significantly raise the r
 The git repo contains
 - main.py: main file containing all the code of data analysis
 - streamlit_app.py - code for an online app designed to predict patterns of metabolic syndrome in patients
+- requirements.txt - requirement file to install all packages needed to operate the code in a virtual environment
 
 Folders
 - Data: contains the historical patient data
